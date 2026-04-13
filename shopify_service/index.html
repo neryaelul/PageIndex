@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shopify Importer — AI CSV Converter</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sidebar-w: 220px;
+      --gray-50:  #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111827;
+      --indigo:       #4f46e5;
+      --indigo-hover: #4338ca;
+      --indigo-light: #eef2ff;
+      --indigo-mid:   #c7d2fe;
+      --green:        #16a34a;
+      --green-light:  #f0fdf4;
+      --green-mid:    #bbf7d0;
+      --red:          #dc2626;
+      --red-light:    #fef2f2;
+      --amber:        #d97706;
+      --amber-light:  #fffbeb;
+      --amber-mid:    #fde68a;
+      --violet:       #7c3aed;
+      --violet-light: #f5f3ff;
+      --violet-mid:   #ddd6fe;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-800);
+      display: flex;
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: #fff;
+      border-right: 1px solid var(--gray-200);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 20;
+    }
+
+    .sidebar-logo {
+      padding: 20px 18px 16px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .sidebar-logo .app-name {
+      font-size: 15px; font-weight: 700;
+      color: var(--gray-900); letter-spacing: -.3px;
+    }
+    .sidebar-logo .app-sub { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+
+    .sidebar-section { padding: 20px 10px 8px; }
+
+    .sidebar-section-label {
+      font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .06em;
+      color: var(--gray-400); padding: 0 8px; margin-bottom: 4px;
+    }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; border-radius: 7px;
+      color: var(--gray-600); font-size: 13.5px; font-weight: 500;
+      cursor: pointer; transition: background .12s, color .12s;
+      text-decoration: none;
+    }
+
+    .nav-item:hover { background: var(--gray-100); color: var(--gray-800); }
+    .nav-item.active { background: var(--indigo-light); color: var(--indigo); }
+    .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; opacity: .7; }
+    .nav-item.active svg { opacity: 1; }
+
+    .sidebar-footer {
+      margin-top: auto; padding: 16px 10px;
+      border-top: 1px solid var(--gray-100);
+    }
+    .sidebar-footer .version { font-size: 11px; color: var(--gray-400); padding: 0 8px; }
+
+    /* ── Main ────────────────────────────────────────────── */
+    .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
+
+    .topbar {
+      background: #fff; border-bottom: 1px solid var(--gray-200);
+      padding: 0 32px; height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .topbar-title { font-size: 15px; font-weight: 600; color: var(--gray-900); }
+    .topbar-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--indigo-light); color: var(--indigo);
+      padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    }
+    .topbar-badge span {
+      width: 6px; height: 6px; background: var(--indigo); border-radius: 50%;
+    }
+
+    .content { padding: 32px; flex: 1; }
+
+    .page-header { margin-bottom: 28px; }
+    .page-header h2 { font-size: 22px; font-weight: 700; color: var(--gray-900); letter-spacing: -.3px; }
+    .page-header p  { color: var(--gray-500); margin-top: 4px; font-size: 13.5px; }
+
+    /* ── Layout ──────────────────────────────────────────── */
+    .layout { display: grid; grid-template-columns: 1fr 300px; gap: 24px; align-items: start; }
+
+    /* ── Card ────────────────────────────────────────────── */
+    .card { background: #fff; border: 1px solid var(--gray-200); border-radius: 12px; }
+
+    .card-header {
+      padding: 16px 22px; border-bottom: 1px solid var(--gray-100);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-header h3 { font-size: 14px; font-weight: 600; color: var(--gray-800); }
+    .card-header p  { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+
+    .card-body { padding: 22px; }
+
+    /* ── Steps indicator ─────────────────────────────────── */
+    .steps {
+      display: flex; align-items: center; gap: 0;
+      margin-bottom: 28px;
+    }
+
+    .step {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; font-weight: 500; color: var(--gray-400);
+    }
+
+    .step.active { color: var(--indigo); }
+    .step.done   { color: var(--green); }
+
+    .step-circle {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--gray-200); color: var(--gray-500);
+      font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .step.active .step-circle { background: var(--indigo); color: #fff; }
+    .step.done   .step-circle { background: var(--green);  color: #fff; }
+
+    .step-line {
+      flex: 1; height: 1px; background: var(--gray-200);
+      margin: 0 12px; min-width: 24px;
+    }
+    .step-line.done { background: var(--green-mid); }
+
+    /* ── Drop zone ───────────────────────────────────────── */
+    .drop-zone {
+      border: 1.5px dashed var(--gray-300); border-radius: 10px;
+      padding: 36px 24px; text-align: center; cursor: pointer;
+      transition: border-color .15s, background .15s; background: var(--gray-50);
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--indigo); background: var(--indigo-light);
+    }
+    .drop-zone-icon {
+      width: 40px; height: 40px; background: var(--gray-100); border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; margin: 0 auto 14px;
+      transition: background .15s;
+    }
+    .drop-zone:hover .drop-zone-icon, .drop-zone.drag-over .drop-zone-icon { background: var(--indigo-mid); }
+    .drop-zone-icon svg { width: 20px; height: 20px; color: var(--gray-500); }
+    .drop-zone:hover .drop-zone-icon svg,
+    .drop-zone.drag-over .drop-zone-icon svg { color: var(--indigo); }
+    .drop-zone h4 { font-size: 14px; font-weight: 600; color: var(--gray-700); }
+    .drop-zone p  { font-size: 12.5px; color: var(--gray-400); margin-top: 4px; }
+    .btn-browse {
+      display: inline-block; margin-top: 14px; padding: 7px 16px;
+      border: 1px solid var(--gray-300); background: #fff; color: var(--gray-700);
+      border-radius: 7px; font-size: 13px; font-weight: 500; cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .btn-browse:hover { border-color: var(--indigo); color: var(--indigo); background: var(--indigo-light); }
+    #file-input { display: none; }
+
+    /* ── File list ───────────────────────────────────────── */
+    .file-list { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+
+    .file-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; background: var(--gray-50);
+      border: 1px solid var(--gray-200); border-radius: 8px;
+    }
+    .file-row-icon {
+      width: 32px; height: 32px; background: var(--indigo-light);
+      border-radius: 7px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .file-row-icon svg { width: 15px; height: 15px; color: var(--indigo); }
+    .file-row-info { flex: 1; min-width: 0; }
+    .file-row-info .name {
+      font-size: 13px; font-weight: 500; color: var(--gray-800);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .file-row-info .size { font-size: 11.5px; color: var(--gray-400); margin-top: 1px; }
+    .file-row-remove {
+      background: none; border: none; color: var(--gray-400);
+      cursor: pointer; padding: 4px; border-radius: 5px;
+      display: flex; align-items: center; transition: color .12s, background .12s;
+    }
+    .file-row-remove:hover { color: var(--red); background: var(--red-light); }
+    .file-row-remove svg { width: 14px; height: 14px; }
+
+    /* ── Buttons ─────────────────────────────────────────── */
+    .btn-primary {
+      width: 100%; margin-top: 20px; padding: 11px 20px;
+      background: var(--indigo); color: #fff; font-size: 14px; font-weight: 600;
+      border: none; border-radius: 8px; cursor: pointer; transition: opacity .15s, background .15s;
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--indigo-hover); }
+    .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── Progress ────────────────────────────────────────── */
+    .progress-block { display: none; margin-top: 20px; }
+    .progress-label {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12.5px; color: var(--gray-500); margin-bottom: 8px;
+    }
+    .spinner {
+      width: 13px; height: 13px;
+      border: 2px solid var(--gray-200); border-top-color: var(--indigo);
+      border-radius: 50%; animation: spin .65s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .progress-track {
+      height: 3px; background: var(--gray-200); border-radius: 99px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; width: 0%; background: var(--indigo);
+      border-radius: 99px; transition: width .5s ease;
+    }
+
+    /* ── Metafields panel ────────────────────────────────── */
+    .metafields-panel { display: none; margin-top: 24px; }
+
+    .metafields-panel .section-label {
+      font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .05em; color: var(--gray-400); margin-bottom: 10px;
+    }
+
+    .mf-info-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .mf-info-bar p { font-size: 12.5px; color: var(--gray-500); }
+    .mf-select-all {
+      background: none; border: none; color: var(--indigo);
+      font-size: 12px; font-weight: 500; cursor: pointer;
+    }
+    .mf-select-all:hover { text-decoration: underline; }
+
+    .mf-list { display: flex; flex-direction: column; gap: 6px; }
+
+    .mf-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px;
+      background: #fff; border: 1px solid var(--gray-200); border-radius: 8px;
+      transition: border-color .15s;
+    }
+    .mf-row.selected { border-color: var(--indigo-mid); background: var(--indigo-light); }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative; width: 36px; height: 20px; flex-shrink: 0; cursor: pointer;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute; inset: 0; background: var(--gray-300);
+      border-radius: 99px; transition: background .2s;
+    }
+    .toggle input:checked + .toggle-track { background: var(--indigo); }
+    .toggle-thumb {
+      position: absolute; top: 3px; left: 3px;
+      width: 14px; height: 14px; background: #fff; border-radius: 50%;
+      transition: transform .2s; pointer-events: none;
+    }
+    .toggle input:checked ~ .toggle-thumb { transform: translateX(16px); }
+
+    .mf-info { flex: 1; min-width: 0; }
+    .mf-info .mf-key {
+      font-size: 12.5px; font-weight: 600; color: var(--gray-800);
+      font-family: "SF Mono", "Fira Code", monospace;
+    }
+    .mf-info .mf-source { font-size: 11.5px; color: var(--gray-400); margin-top: 1px; }
+    .mf-info .mf-source b { color: var(--gray-600); font-weight: 500; }
+
+    .mf-type-badge {
+      font-size: 11px; font-weight: 500;
+      padding: 2px 8px; border-radius: 4px;
+      background: var(--gray-100); color: var(--gray-500);
+      white-space: nowrap; flex-shrink: 0;
+      font-family: "SF Mono", "Fira Code", monospace;
+    }
+
+    .mf-sample {
+      font-size: 11px; color: var(--gray-400);
+      max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* ── Result ──────────────────────────────────────────── */
+    .result-block {
+      display: none; margin-top: 20px;
+      background: var(--green-light); border: 1px solid var(--green-mid);
+      border-radius: 10px; padding: 18px;
+    }
+    .result-title { font-size: 13.5px; font-weight: 600; color: var(--green); margin-bottom: 14px; }
+    .result-stats { display: flex; gap: 10px; margin-bottom: 14px; }
+    .stat-box {
+      flex: 1; background: #fff; border: 1px solid var(--green-mid);
+      border-radius: 8px; padding: 10px 12px; text-align: center;
+    }
+    .stat-box .n { font-size: 20px; font-weight: 700; color: var(--gray-900); }
+    .stat-box .l { font-size: 11px; color: var(--gray-500); margin-top: 2px; }
+    .btn-download {
+      width: 100%; padding: 10px; background: var(--green); color: #fff;
+      font-size: 13.5px; font-weight: 600; border: none; border-radius: 8px;
+      cursor: pointer; transition: opacity .15s;
+    }
+    .btn-download:hover { opacity: .88; }
+
+    /* ── Error ───────────────────────────────────────────── */
+    .error-block {
+      display: none; margin-top: 16px;
+      background: var(--red-light); border: 1px solid #fecaca;
+      border-radius: 8px; padding: 12px 14px;
+      font-size: 13px; color: var(--red);
+    }
+
+    .btn-text {
+      display: none; width: 100%; margin-top: 12px;
+      background: none; border: none; color: var(--gray-400);
+      font-size: 12.5px; cursor: pointer; text-align: center;
+    }
+    .btn-text:hover { color: var(--gray-600); text-decoration: underline; }
+
+    /* ── Info sidebar ────────────────────────────────────── */
+    .info-card .card-body { padding: 0; }
+    .info-step {
+      display: flex; gap: 14px; padding: 16px 22px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+    .info-step:last-child { border-bottom: none; }
+    .step-num {
+      width: 24px; height: 24px; background: var(--indigo-light); color: var(--indigo);
+      border-radius: 6px; font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
+    }
+    .info-step h5 { font-size: 13px; font-weight: 600; color: var(--gray-800); }
+    .info-step p  { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+
+    .field-list { padding: 16px 22px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .field-tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--gray-100); color: var(--gray-600);
+      padding: 3px 8px; border-radius: 5px; font-size: 11.5px;
+      font-family: "SF Mono", "Fira Code", monospace;
+    }
+    .field-tag span {
+      width: 5px; height: 5px; background: var(--indigo);
+      border-radius: 50%; flex-shrink: 0;
+    }
+
+    .divider { height: 1px; background: var(--gray-100); margin: 4px 0; }
+
+    /* ── Prompt card ─────────────────────────────────────── */
+    .prompt-card { margin-top: 20px; }
+
+    .prompt-header {
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; user-select: none;
+    }
+
+    .prompt-header-left { display: flex; align-items: center; gap: 10px; }
+
+    .prompt-icon {
+      width: 30px; height: 30px; border-radius: 7px;
+      background: var(--violet-light);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .prompt-icon svg { width: 15px; height: 15px; color: var(--violet); }
+
+    .prompt-title   { font-size: 13.5px; font-weight: 600; color: var(--gray-800); }
+    .prompt-sub     { font-size: 11.5px; color: var(--gray-400); margin-top: 1px; }
+
+    .prompt-chevron {
+      color: var(--gray-400); transition: transform .2s;
+    }
+    .prompt-chevron.open { transform: rotate(180deg); }
+    .prompt-chevron svg { width: 16px; height: 16px; }
+
+    .prompt-body {
+      display: none;
+      padding-top: 16px;
+    }
+    .prompt-body.open { display: block; }
+
+    .prompt-examples {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
+    }
+    .example-chip {
+      padding: 4px 10px; background: var(--violet-light);
+      border: 1px solid var(--violet-mid); border-radius: 20px;
+      font-size: 11.5px; color: var(--violet); cursor: pointer;
+      transition: background .12s;
+    }
+    .example-chip:hover { background: var(--violet-mid); }
+
+    .prompt-textarea {
+      width: 100%; min-height: 110px;
+      padding: 10px 12px; border: 1px solid var(--gray-300);
+      border-radius: 8px; font-size: 13px; color: var(--gray-800);
+      background: var(--gray-50); resize: vertical;
+      font-family: inherit; line-height: 1.6;
+      transition: border-color .15s;
+      outline: none;
+    }
+    .prompt-textarea:focus { border-color: var(--violet); background: #fff; }
+    .prompt-textarea::placeholder { color: var(--gray-400); }
+
+    .prompt-hint { font-size: 11.5px; color: var(--gray-400); margin-top: 6px; }
+
+    .prompt-active-badge {
+      display: none;
+      font-size: 11px; font-weight: 600; padding: 2px 8px;
+      background: var(--violet-light); color: var(--violet);
+      border-radius: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="app-name">Shopify Importer</div>
+    <div class="app-sub">AI-powered CSV converter</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Import</div>
+    <a class="nav-item active" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Convert CSV
+    </a>
+    <a class="nav-item" href="#" style="pointer-events:none;opacity:.4">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      Field Mappings
+    </a>
+    <a class="nav-item" href="#" style="pointer-events:none;opacity:.4">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      History
+    </a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Settings</div>
+    <a class="nav-item" href="#" style="pointer-events:none;opacity:.4">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      AI Model
+    </a>
+    <a class="nav-item" href="#" style="pointer-events:none;opacity:.4">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Account
+    </a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="version">Powered by PageIndex AI · gpt-4o</div>
+  </div>
+</aside>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title">Convert CSV to Shopify</div>
+    <div class="topbar-badge"><span></span> AI Active</div>
+  </div>
+
+  <div class="content">
+    <div class="page-header">
+      <h2>Upload Product Files</h2>
+      <p>Upload CSV files from any supplier — the AI detects columns and metafields automatically.</p>
+    </div>
+
+    <!-- Step indicator -->
+    <div class="steps">
+      <div class="step active" id="step1-dot">
+        <div class="step-circle" id="s1">1</div>
+        Upload &amp; Analyze
+      </div>
+      <div class="step-line" id="line-1-2"></div>
+      <div class="step" id="step2-dot">
+        <div class="step-circle" id="s2">2</div>
+        Configure Metafields
+      </div>
+      <div class="step-line" id="line-2-3"></div>
+      <div class="step" id="step3-dot">
+        <div class="step-circle" id="s3">3</div>
+        Download CSV
+      </div>
+    </div>
+
+    <div class="layout">
+      <!-- Left column -->
+      <div style="display:flex;flex-direction:column;gap:20px;">
+
+        <!-- Upload card -->
+        <div class="card" id="upload-card">
+          <div class="card-header">
+            <div>
+              <h3>Source Files</h3>
+              <p>Any format, any language</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="drop-zone" id="drop-zone">
+              <div class="drop-zone-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              </div>
+              <h4>Drop CSV files here</h4>
+              <p>Multiple files, any supplier format</p>
+              <label for="file-input" class="btn-browse">Browse files</label>
+              <input type="file" id="file-input" multiple accept=".csv" />
+            </div>
+            <div class="file-list" id="file-list"></div>
+
+            <!-- Custom Instructions -->
+            <div class="prompt-card card" style="border:1px solid var(--gray-200);">
+              <div class="card-body" style="padding:14px 18px;">
+                <div class="prompt-header" id="prompt-toggle">
+                  <div class="prompt-header-left">
+                    <div class="prompt-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                    </div>
+                    <div>
+                      <div class="prompt-title">
+                        Custom Instructions
+                        <span class="prompt-active-badge" id="prompt-badge">Active</span>
+                      </div>
+                      <div class="prompt-sub">Tell the AI how to transform each field</div>
+                    </div>
+                  </div>
+                  <div class="prompt-chevron" id="prompt-chevron">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                </div>
+
+                <div class="prompt-body" id="prompt-body">
+                  <div class="prompt-examples">
+                    <div class="example-chip" data-text="Translate all product titles and descriptions to English.">Translate to English</div>
+                    <div class="example-chip" data-text="Add the tag 'sale' to all products.">Add SALE tag</div>
+                    <div class="example-chip" data-text="Vendor should always be 'My Brand'.">Fix Vendor name</div>
+                    <div class="example-chip" data-text="Keep descriptions under 150 words and make them sound professional.">Trim descriptions</div>
+                    <div class="example-chip" data-text="Generate an SEO-optimized title and description for each product.">SEO optimize</div>
+                    <div class="example-chip" data-text="Capitalize the first letter of every word in the product title.">Title case</div>
+                  </div>
+                  <textarea
+                    class="prompt-textarea"
+                    id="custom-instructions"
+                    placeholder="e.g.:&#10;- Translate all titles and descriptions to English&#10;- Vendor should always be 'My Store'&#10;- Add tag 'new-arrival' to all products&#10;- Keep descriptions under 100 words"
+                  ></textarea>
+                  <div class="prompt-hint">These instructions are injected into the AI prompt before analysis.</div>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn-primary" id="btn-analyze" disabled>Analyze files</button>
+
+            <div class="progress-block" id="progress-block">
+              <div class="progress-label">
+                <div class="spinner"></div>
+                <span id="progress-text">Reading files...</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill" id="progress-fill"></div>
+              </div>
+            </div>
+
+            <div class="error-block" id="error-block"></div>
+          </div>
+        </div>
+
+        <!-- Metafields card (shown after analysis) -->
+        <div class="card" id="metafields-card" style="display:none;">
+          <div class="card-header">
+            <div>
+              <h3>Metafields</h3>
+              <p>Extra columns detected — select which to include in the export</p>
+            </div>
+          </div>
+          <div class="card-body">
+
+            <div id="no-metafields" style="display:none; text-align:center; padding: 20px 0; color: var(--gray-400); font-size:13px;">
+              No extra columns detected — all columns were mapped to standard Shopify fields.
+            </div>
+
+            <div id="metafields-content" style="display:none;">
+              <div class="mf-info-bar">
+                <p id="mf-count-label"></p>
+                <button class="mf-select-all" id="btn-select-all">Select all</button>
+              </div>
+              <div class="mf-list" id="mf-list"></div>
+            </div>
+
+            <div class="divider" style="margin: 20px 0;"></div>
+
+            <button class="btn-primary" id="btn-convert" style="margin-top:0;">
+              Generate Shopify CSV
+            </button>
+
+            <div class="progress-block" id="convert-progress">
+              <div class="progress-label">
+                <div class="spinner"></div>
+                <span id="convert-progress-text">Building CSV...</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill" id="convert-progress-fill"></div>
+              </div>
+            </div>
+
+            <div class="result-block" id="result-block">
+              <div class="result-title">Conversion complete</div>
+              <div class="result-stats">
+                <div class="stat-box">
+                  <div class="n" id="stat-products">0</div>
+                  <div class="l">Products</div>
+                </div>
+                <div class="stat-box">
+                  <div class="n" id="stat-files">0</div>
+                  <div class="l">Source files</div>
+                </div>
+                <div class="stat-box">
+                  <div class="n" id="stat-metafields">0</div>
+                  <div class="l">Metafields</div>
+                </div>
+              </div>
+              <button class="btn-download" id="btn-download">Download shopify_products.csv</button>
+            </div>
+
+            <div class="error-block" id="convert-error"></div>
+          </div>
+        </div>
+
+        <button class="btn-text" id="btn-reset">Start over</button>
+      </div>
+
+      <!-- Right column: info -->
+      <div style="display:flex;flex-direction:column;gap:20px;">
+        <div class="card info-card">
+          <div class="card-header"><h3>How it works</h3></div>
+          <div class="card-body">
+            <div class="info-step">
+              <div class="step-num">1</div>
+              <div>
+                <h5>Upload any CSV</h5>
+                <p>Hebrew, English, custom column names — any supplier format.</p>
+              </div>
+            </div>
+            <div class="info-step">
+              <div class="step-num">2</div>
+              <div>
+                <h5>AI maps columns</h5>
+                <p>GPT-4o detects standard fields and suggests metafields for extra columns.</p>
+              </div>
+            </div>
+            <div class="info-step">
+              <div class="step-num">3</div>
+              <div>
+                <h5>Pick metafields</h5>
+                <p>Toggle which extra columns to export as Shopify metafields.</p>
+              </div>
+            </div>
+            <div class="info-step">
+              <div class="step-num">4</div>
+              <div>
+                <h5>Download merged file</h5>
+                <p>One ready-to-import CSV from all your supplier files.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card info-card">
+          <div class="card-header"><h3>Standard fields</h3></div>
+          <div class="field-list">
+            <div class="field-tag"><span></span>Handle</div>
+            <div class="field-tag"><span></span>Title</div>
+            <div class="field-tag"><span></span>Body (HTML)</div>
+            <div class="field-tag"><span></span>Vendor</div>
+            <div class="field-tag"><span></span>Type / Tags</div>
+            <div class="field-tag"><span></span>Variant SKU</div>
+            <div class="field-tag"><span></span>Variant Price</div>
+            <div class="field-tag"><span></span>Variant Grams</div>
+            <div class="field-tag"><span></span>Variant Inventory Qty</div>
+            <div class="field-tag"><span></span>Variant Barcode</div>
+            <div class="field-tag"><span></span>Option1 / Option2</div>
+            <div class="field-tag"><span></span>Image Src</div>
+            <div class="field-tag"><span></span>SEO Title / Description</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── State ─────────────────────────────────────────────────
+  let files        = [];
+  let analysisData = null;
+  let downloadBlob = null;
+
+  // ── DOM refs ──────────────────────────────────────────────
+  const dropZone        = document.getElementById('drop-zone');
+  const fileInput       = document.getElementById('file-input');
+  const fileListEl      = document.getElementById('file-list');
+  const btnAnalyze      = document.getElementById('btn-analyze');
+  const progressBlock   = document.getElementById('progress-block');
+  const progressFill    = document.getElementById('progress-fill');
+  const progressText    = document.getElementById('progress-text');
+  const errorBlock      = document.getElementById('error-block');
+
+  const metafieldsCard  = document.getElementById('metafields-card');
+  const noMetafields    = document.getElementById('no-metafields');
+  const mfContent       = document.getElementById('metafields-content');
+  const mfCountLabel    = document.getElementById('mf-count-label');
+  const btnSelectAll    = document.getElementById('btn-select-all');
+  const mfList          = document.getElementById('mf-list');
+
+  const btnConvert      = document.getElementById('btn-convert');
+  const convertProgress = document.getElementById('convert-progress');
+  const convertFill     = document.getElementById('convert-progress-fill');
+  const convertText     = document.getElementById('convert-progress-text');
+  const convertError    = document.getElementById('convert-error');
+  const resultBlock     = document.getElementById('result-block');
+  const btnDownload     = document.getElementById('btn-download');
+  const statProds       = document.getElementById('stat-products');
+  const statFilesEl     = document.getElementById('stat-files');
+  const statMF          = document.getElementById('stat-metafields');
+  const btnReset        = document.getElementById('btn-reset');
+
+  // Step indicators
+  const s1 = document.getElementById('s1'), step1 = document.getElementById('step1-dot');
+  const s2 = document.getElementById('s2'), step2 = document.getElementById('step2-dot');
+  const s3 = document.getElementById('s3'), step3 = document.getElementById('step3-dot');
+  const line12 = document.getElementById('line-1-2');
+  const line23 = document.getElementById('line-2-3');
+
+  // ── Prompt panel ─────────────────────────────────────────
+  const promptToggle  = document.getElementById('prompt-toggle');
+  const promptBody    = document.getElementById('prompt-body');
+  const promptChevron = document.getElementById('prompt-chevron');
+  const promptBadge   = document.getElementById('prompt-badge');
+  const customInstr   = document.getElementById('custom-instructions');
+
+  promptToggle.addEventListener('click', () => {
+    const open = promptBody.classList.toggle('open');
+    promptChevron.classList.toggle('open', open);
+  });
+
+  customInstr.addEventListener('input', () => {
+    promptBadge.style.display = customInstr.value.trim() ? 'inline-flex' : 'none';
+  });
+
+  document.querySelectorAll('.example-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const existing = customInstr.value.trim();
+      customInstr.value = existing ? existing + '\n' + chip.dataset.text : chip.dataset.text;
+      customInstr.dispatchEvent(new Event('input'));
+    });
+  });
+
+  // ── SVG icons ─────────────────────────────────────────────
+  const svgFile = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`;
+  const svgX    = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+  const svgCheck = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+  // ── Drag & drop ───────────────────────────────────────────
+  dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    addFiles([...e.dataTransfer.files]);
+  });
+  fileInput.addEventListener('change', () => addFiles([...fileInput.files]));
+
+  function addFiles(newFiles) {
+    newFiles.forEach(f => {
+      if (f.name.endsWith('.csv') && !files.find(x => x.name === f.name)) files.push(f);
+    });
+    renderFileList();
+  }
+
+  function renderFileList() {
+    fileListEl.innerHTML = '';
+    files.forEach((f, i) => {
+      const row = document.createElement('div');
+      row.className = 'file-row';
+      row.innerHTML = `
+        <div class="file-row-icon">${svgFile}</div>
+        <div class="file-row-info">
+          <div class="name">${f.name}</div>
+          <div class="size">${(f.size / 1024).toFixed(1)} KB</div>
+        </div>
+        <button class="file-row-remove" data-i="${i}">${svgX}</button>
+      `;
+      fileListEl.appendChild(row);
+    });
+    fileListEl.querySelectorAll('.file-row-remove').forEach(btn =>
+      btn.addEventListener('click', () => { files.splice(+btn.dataset.i, 1); renderFileList(); })
+    );
+    btnAnalyze.disabled = files.length === 0;
+  }
+
+  // ── Step 1: Analyze ───────────────────────────────────────
+  btnAnalyze.addEventListener('click', async () => {
+    errorBlock.style.display = 'none';
+    progressBlock.style.display = 'block';
+    btnAnalyze.disabled = true;
+    dropZone.style.pointerEvents = 'none';
+
+    const steps = [
+      [20,  600, 'Reading files...'],
+      [45, 2000, 'AI detecting column structure...'],
+      [70, 2500, 'Identifying metafields...'],
+      [90,  800, 'Finalizing analysis...'],
+    ];
+    let si = 0;
+    (function next() {
+      if (si >= steps.length) return;
+      const [pct, delay, label] = steps[si++];
+      progressText.textContent = label;
+      progressFill.style.width = pct + '%';
+      setTimeout(next, delay);
+    })();
+
+    const form = new FormData();
+    files.forEach(f => form.append('files', f));
+    form.append('custom_instructions', customInstr.value.trim());
+
+    try {
+      const res = await fetch('/api/analyze', { method: 'POST', body: form });
+      if (!res.ok) {
+        let msg = 'Analysis failed';
+        try { msg = (await res.json()).detail || msg; } catch { msg = await res.text() || msg; }
+        throw new Error(msg);
+      }
+      analysisData = await res.json();
+
+      progressFill.style.width = '100%';
+      await new Promise(r => setTimeout(r, 300));
+      progressBlock.style.display = 'none';
+
+      // Lock instructions after analyze
+      customInstr.disabled = true;
+      promptToggle.style.pointerEvents = 'none';
+
+      // Update step indicators
+      step1.classList.remove('active'); step1.classList.add('done');
+      s1.innerHTML = svgCheck;
+      line12.classList.add('done');
+      step2.classList.add('active');
+      s2.style.background = 'var(--indigo)'; s2.style.color = '#fff';
+
+      // Show metafields card
+      metafieldsCard.style.display = 'block';
+      renderMetafields(analysisData.metafields || []);
+      btnReset.style.display = 'block';
+
+    } catch (err) {
+      progressBlock.style.display = 'none';
+      errorBlock.style.display = 'block';
+      errorBlock.textContent = 'Error: ' + err.message;
+      btnAnalyze.disabled = false;
+      dropZone.style.pointerEvents = '';
+    }
+  });
+
+  // ── Render metafields ─────────────────────────────────────
+  function renderMetafields(metafields) {
+    if (!metafields.length) {
+      noMetafields.style.display = 'block';
+      mfContent.style.display    = 'none';
+      return;
+    }
+
+    noMetafields.style.display = 'none';
+    mfContent.style.display    = 'block';
+    mfCountLabel.textContent   = `${metafields.length} extra column${metafields.length !== 1 ? 's' : ''} detected`;
+
+    mfList.innerHTML = '';
+    let allSelected = true;
+
+    metafields.forEach((mf, i) => {
+      const key = `${mf.namespace}.${mf.key}`;
+      const row = document.createElement('div');
+      row.className = 'mf-row selected';
+      row.dataset.key = key;
+      row.innerHTML = `
+        <label class="toggle">
+          <input type="checkbox" checked data-key="${key}" />
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+        <div class="mf-info">
+          <div class="mf-key">${key}</div>
+          <div class="mf-source">from <b>${mf.source_col}</b> · ${mf.label}</div>
+        </div>
+        <div class="mf-type-badge">${mf.type}</div>
+        <div class="mf-sample" title="${mf.sample}">${mf.sample}</div>
+      `;
+      mfList.appendChild(row);
+
+      row.querySelector('input').addEventListener('change', e => {
+        row.classList.toggle('selected', e.target.checked);
+        updateSelectAllLabel();
+      });
+    });
+
+    updateSelectAllLabel();
+  }
+
+  function updateSelectAllLabel() {
+    const all   = mfList.querySelectorAll('input[type=checkbox]');
+    const checked = mfList.querySelectorAll('input[type=checkbox]:checked');
+    btnSelectAll.textContent = checked.length === all.length ? 'Deselect all' : 'Select all';
+  }
+
+  btnSelectAll.addEventListener('click', () => {
+    const boxes   = mfList.querySelectorAll('input[type=checkbox]');
+    const allChecked = [...boxes].every(b => b.checked);
+    boxes.forEach(b => {
+      b.checked = !allChecked;
+      b.closest('.mf-row').classList.toggle('selected', !allChecked);
+    });
+    updateSelectAllLabel();
+  });
+
+  // ── Step 2: Convert ───────────────────────────────────────
+  btnConvert.addEventListener('click', async () => {
+    convertError.style.display  = 'none';
+    resultBlock.style.display   = 'none';
+    convertProgress.style.display = 'block';
+    btnConvert.disabled = true;
+
+    convertFill.style.width = '0%';
+    const convSteps = [
+      [30,  600, 'Applying field mappings...'],
+      [70, 1000, 'Writing metafield columns...'],
+      [95,  500, 'Merging files...'],
+    ];
+    let si = 0;
+    (function next() {
+      if (si >= convSteps.length) return;
+      const [pct, delay, label] = convSteps[si++];
+      convertText.textContent = label;
+      convertFill.style.width = pct + '%';
+      setTimeout(next, delay);
+    })();
+
+    // Collect selected metafield keys
+    const selected = [...mfList.querySelectorAll('input[type=checkbox]:checked')]
+      .map(b => b.dataset.key);
+
+    const form = new FormData();
+    files.forEach(f => form.append('files', f));
+    form.append('analysis', JSON.stringify(analysisData));
+    form.append('selected_metafields', JSON.stringify(selected));
+
+    try {
+      const res = await fetch('/api/convert', { method: 'POST', body: form });
+      if (!res.ok) {
+        let msg = 'Conversion failed';
+        try { msg = (await res.json()).detail || msg; } catch { msg = await res.text() || msg; }
+        throw new Error(msg);
+      }
+      downloadBlob = await res.blob();
+
+      const totalProducts = res.headers.get('X-Total-Products') || '?';
+      const fileCount     = res.headers.get('X-File-Count')     || files.length;
+      const mfCount       = res.headers.get('X-Metafields-Count') || selected.length;
+
+      convertFill.style.width = '100%';
+      await new Promise(r => setTimeout(r, 300));
+
+      convertProgress.style.display = 'none';
+      resultBlock.style.display     = 'block';
+      statProds.textContent         = totalProducts;
+      statFilesEl.textContent       = fileCount;
+      statMF.textContent            = mfCount;
+
+      // Step 3 done
+      step2.classList.remove('active'); step2.classList.add('done');
+      s2.innerHTML = svgCheck;
+      line23.classList.add('done');
+      step3.classList.add('active');
+      s3.style.background = 'var(--indigo)'; s3.style.color = '#fff';
+
+    } catch (err) {
+      convertProgress.style.display = 'none';
+      convertError.style.display    = 'block';
+      convertError.textContent      = 'Error: ' + err.message;
+      btnConvert.disabled = false;
+    }
+  });
+
+  // ── Download ──────────────────────────────────────────────
+  btnDownload.addEventListener('click', () => {
+    if (!downloadBlob) return;
+    const url = URL.createObjectURL(downloadBlob);
+    Object.assign(document.createElement('a'), { href: url, download: 'shopify_products.csv' }).click();
+    URL.revokeObjectURL(url);
+  });
+
+  // ── Reset ─────────────────────────────────────────────────
+  btnReset.addEventListener('click', () => {
+    files = []; analysisData = null; downloadBlob = null;
+    renderFileList();
+    metafieldsCard.style.display  = 'none';
+    resultBlock.style.display     = 'none';
+    convertError.style.display    = 'none';
+    errorBlock.style.display      = 'none';
+    btnReset.style.display        = 'none';
+    progressFill.style.width      = '0%';
+    convertFill.style.width       = '0%';
+    fileInput.value               = '';
+    dropZone.style.pointerEvents  = '';
+    btnAnalyze.disabled           = true;
+    btnConvert.disabled           = false;
+    customInstr.disabled          = false;
+    promptToggle.style.pointerEvents = '';
+
+    // Reset steps
+    [step1, step2, step3].forEach(s => { s.classList.remove('active','done'); });
+    step1.classList.add('active');
+    [s1,s2,s3].forEach((s,i) => { s.innerHTML = i+1; s.style.background=''; s.style.color=''; });
+    [line12, line23].forEach(l => l.classList.remove('done'));
+  });
+</script>
+</body>
+</html>

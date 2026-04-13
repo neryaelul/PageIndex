@@ -1,0 +1,6 @@
+product_id,product_name,description,price,compare_price,stock,brand,category,tags,weight_kg,barcode,image_url,color,size,warranty_years,connector_type,battery_life_hours,water_resistant
+P1001,Wireless Headphones Pro,"Premium wireless headphones with noise cancellation 30hr battery",599.00,799.00,20,TechBrand,Electronics,"wireless,headphones,audio",0.35,7290000001001,https://example.com/headphones.jpg,Black,One Size,2,3.5mm + USB-C,30,No
+P1002,Smart Watch Series 5,"Fitness tracking heart rate GPS water resistant",899.00,1199.00,10,TechBrand,Electronics,"smartwatch,fitness,GPS",0.08,7290000001002,https://example.com/watch.jpg,Silver,One Size,1,Proprietary,168,Yes
+P1003,Bluetooth Speaker,"Portable waterproof speaker 360 sound 12hr battery",299.00,399.00,35,TechBrand,Electronics,"bluetooth,speaker,portable",0.45,7290000001003,https://example.com/speaker.jpg,Blue,One Size,1,USB-C,12,Yes
+P1004,USB-C Hub 7-in-1,"7 port USB-C hub HDMI 4K USB3.0 SD card",149.00,199.00,60,TechBrand,Accessories,"USB-C,hub,adapter",0.12,7290000001004,https://example.com/hub.jpg,Gray,One Size,1,USB-C,0,No
+P1005,Laptop Stand Adjustable,"Ergonomic aluminum laptop stand height adjustable",179.00,249.00,45,TechBrand,Accessories,"laptop,stand,ergonomic",0.55,7290000001005,https://example.com/stand.jpg,Silver,One Size,2,N/A,0,No

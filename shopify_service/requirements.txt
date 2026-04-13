@@ -1,0 +1,5 @@
+fastapi
+uvicorn[standard]
+openai>=1.0.0
+python-dotenv
+pymongo>=4.6
