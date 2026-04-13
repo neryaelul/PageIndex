@@ -1,0 +1,27 @@
+# Shopify service: docker compose up --build
+# With local MongoDB: docker compose --profile mongo up --build
+# Set OPENAI_API_KEY (or CHATGPT_API_KEY) in .env or the environment.
+
+services:
+  shopify-service:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      CHATGPT_API_KEY: ${CHATGPT_API_KEY:-}
+      MONGODB_URI: ${MONGODB_URI:-}
+      MONGO_DB_NAME: ${MONGO_DB_NAME:-shopify_service}
+      JWT_SECRET: ${JWT_SECRET:-}
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    profiles: [mongo]
+    ports:
+      - "27017:27017"
+    volumes:
+      - pim_mongo_data:/data/db
+
+volumes:
+  pim_mongo_data:
